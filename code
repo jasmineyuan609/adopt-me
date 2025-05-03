@@ -1,0 +1,125 @@
+import pygame
+import sys
+
+pygame.init()
+
+# Screen setup
+WIDTH, HEIGHT = 800, 600
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Adopt Me - With Images")
+
+clock = pygame.time.Clock()
+
+# Colors
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
+GRAY = (200, 200, 200)
+
+# Font
+font = pygame.font.SysFont(None, 36)
+
+# Game state
+character_selected = False
+is_female = False
+
+# Load images
+boy_img = pygame.image.load("boy.png")
+girl_img = pygame.image.load("girl.png")
+dog_img = pygame.image.load("dog.png")
+
+# Scale images
+boy_img = pygame.transform.scale(boy_img, (60, 90))
+girl_img = pygame.transform.scale(girl_img, (60, 90))
+dog_img = pygame.transform.scale(dog_img, (50, 50))
+
+# Positions
+player_x, player_y = 100, 100
+dog_x, dog_y = 600, 400
+player_speed = 5
+dog_following = False
+
+# Buttons
+male_button = pygame.Rect(250, 250, 120, 50)
+female_button = pygame.Rect(430, 250, 120, 50)
+adopt_button = pygame.Rect(650, 50, 120, 40)
+
+def draw_character_select():
+    screen.fill(WHITE)
+    title = font.render("Choose Your Character", True, BLACK)
+    screen.blit(title, (260, 150))
+    pygame.draw.rect(screen, GRAY, male_button)
+    pygame.draw.rect(screen, GRAY, female_button)
+    screen.blit(font.render("Boy", True, BLACK), (male_button.x + 30, male_button.y + 10))
+    screen.blit(font.render("Girl", True, BLACK), (female_button.x + 30, female_button.y + 10))
+
+def draw_adopt_button():
+    pygame.draw.rect(screen, GRAY, adopt_button)
+    screen.blit(font.render("Adopt Dog", True, BLACK), (adopt_button.x + 10, adopt_button.y + 5))
+
+# ========== GAME LOOP ==========
+running = True
+while running:
+    screen.fill(WHITE)
+
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+
+        if not character_selected:
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if male_button.collidepoint(event.pos):
+                    is_female = False
+                    character_selected = True
+                elif female_button.collidepoint(event.pos):
+                    is_female = True
+                    character_selected = True
+        else:
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if adopt_button.collidepoint(event.pos):
+                    dog_following = True
+
+    if not character_selected:
+        draw_character_select()
+    else:
+        # Movement
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_LEFT]:
+            player_x -= player_speed
+        if keys[pygame.K_RIGHT]:
+            player_x += player_speed
+        if keys[pygame.K_UP]:
+            player_y -= player_speed
+        if keys[pygame.K_DOWN]:
+            player_y += player_speed
+
+        # Dog follows player
+        if dog_following:
+            if dog_x < player_x:
+                dog_x += 2
+            elif dog_x > player_x:
+                dog_x -= 2
+            if dog_y < player_y:
+                dog_y += 2
+            elif dog_y > player_y:
+                dog_y -= 2
+
+        # Draw player
+        if is_female:
+            screen.blit(girl_img, (player_x, player_y))
+        else:
+            screen.blit(boy_img, (player_x, player_y))
+
+        # Draw dog
+        screen.blit(dog_img, (dog_x, dog_y))
+
+        # Draw adopt button
+        draw_adopt_button()
+
+    pygame.display.flip()
+    clock.tick(60)
+
+pygame.quit()
+sys.exit()
+
+
+
