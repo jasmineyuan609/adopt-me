@@ -1,125 +1,140 @@
 import pygame
-import sys
 
+# Initialize pygame
 pygame.init()
 
-# Screen setup
-WIDTH, HEIGHT = 800, 600
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Adopt Me - With Images")
-
-clock = pygame.time.Clock()
+# Set up the display
+screen = pygame.display.set_mode((800, 600))
+pygame.display.set_caption("Adopt Me Game")
 
 # Colors
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
-GRAY = (200, 200, 200)
 
-# Font
-font = pygame.font.SysFont(None, 36)
-
-# Game state
-character_selected = False
-is_female = False
-
-# Load images
+# Load images (ensure you have the correct paths for the images)
 boy_img = pygame.image.load("boy.png")
 girl_img = pygame.image.load("girl.png")
 dog_img = pygame.image.load("dog.png")
 
-# Scale images
-boy_img = pygame.transform.scale(boy_img, (60, 90))
-girl_img = pygame.transform.scale(girl_img, (60, 90))
-dog_img = pygame.transform.scale(dog_img, (50, 50))
+# Resize images to make them smaller
+boy_img = pygame.transform.scale(boy_img, (80, 120))  # Resize to 80x120
+girl_img = pygame.transform.scale(girl_img, (80, 120))  # Resize to 80x120
+dog_img = pygame.transform.scale(dog_img, (60, 60))  # Resize to 60x60
 
-# Positions
-player_x, player_y = 100, 100
-dog_x, dog_y = 600, 400
-player_speed = 5
-dog_following = False
+# Define fonts
+font = pygame.font.SysFont(None, 40)
 
-# Buttons
-male_button = pygame.Rect(250, 250, 120, 50)
-female_button = pygame.Rect(430, 250, 120, 50)
-adopt_button = pygame.Rect(650, 50, 120, 40)
+# Dog states
+dog_hungry = True
+dog_thirsty = True
 
-def draw_character_select():
-    screen.fill(WHITE)
-    title = font.render("Choose Your Character", True, BLACK)
-    screen.blit(title, (260, 150))
-    pygame.draw.rect(screen, GRAY, male_button)
-    pygame.draw.rect(screen, GRAY, female_button)
-    screen.blit(font.render("Boy", True, BLACK), (male_button.x + 30, male_button.y + 10))
-    screen.blit(font.render("Girl", True, BLACK), (female_button.x + 30, female_button.y + 10))
+# Character position
+character_x = 100
+character_y = 150
 
-def draw_adopt_button():
-    pygame.draw.rect(screen, GRAY, adopt_button)
-    screen.blit(font.render("Adopt Dog", True, BLACK), (adopt_button.x + 10, adopt_button.y + 5))
+# Dog position
+dog_x = 300
+dog_y = 300
 
-# ========== GAME LOOP ==========
+# Function to display text
+def display_text(text, x, y, color):
+    text_surface = font.render(text, True, color)
+    screen.blit(text_surface, (x, y))
+
+# Main game loop
 running = True
+character_selected = None
 while running:
     screen.fill(WHITE)
+    
+    # If no character selected, show options to choose
+    if character_selected is None:
+        # Draw buttons for boy and girl
+        pygame.draw.rect(screen, (0, 0, 255), (100, 500, 200, 50))  # Boy button
+        display_text("Boy", 150, 510, WHITE)
+        
+        pygame.draw.rect(screen, (255, 182, 193), (500, 500, 200, 50))  # Girl button
+        display_text("Girl", 550, 510, WHITE)
+    
+    else:
+        # Draw the selected character (boy or girl)
+        if character_selected == "boy":
+            screen.blit(boy_img, (character_x, character_y))
+        else:
+            screen.blit(girl_img, (character_x, character_y))
+        
+        # Draw the dog following the character
+        screen.blit(dog_img, (dog_x, dog_y))
 
+        # Display dog status
+        if dog_hungry:
+            display_text("Dog is hungry!", 300, 500, BLACK)
+        if dog_thirsty:
+            display_text("Dog is thirsty!", 300, 550, BLACK)
+        
+        # Draw buttons for feeding and drinking
+        pygame.draw.rect(screen, (255, 0, 0), (100, 500, 200, 50))  # Feed button
+        display_text("Feed Dog", 150, 510, WHITE)
+        
+        pygame.draw.rect(screen, (0, 0, 255), (500, 500, 200, 50))  # Drink button
+        display_text("Give Drink", 550, 510, WHITE)
+    
+    # Handle events
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
+        
+        # Handle mouse clicks for choosing character
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            x, y = pygame.mouse.get_pos()
+            
+            if character_selected is None:
+                # Select boy or girl
+                if 100 <= x <= 300 and 500 <= y <= 550:
+                    character_selected = "boy"
+                if 500 <= x <= 700 and 500 <= y <= 550:
+                    character_selected = "girl"
+            
+            # Feed the dog (if it's hungry)
+            if character_selected and 100 <= x <= 300 and 500 <= y <= 550 and dog_hungry:
+                dog_hungry = False
+                display_text("You fed the dog!", 300, 400, BLACK)
+            
+            # Give the dog a drink (if it's thirsty)
+            if character_selected and 500 <= x <= 700 and 500 <= y <= 550 and dog_thirsty:
+                dog_thirsty = False
+                display_text("You gave the dog a drink!", 300, 400, BLACK)
+    
+    # Move the character with arrow keys (slower movement)
+    move_speed = 0.5  # Slower movement speed (change this value for slower/faster movement)
+    
+    keys = pygame.key.get_pressed()
+    if keys[pygame.K_LEFT]:
+        character_x -= move_speed
+    if keys[pygame.K_RIGHT]:
+        character_x += move_speed
+    if keys[pygame.K_UP]:
+        character_y -= move_speed
+    if keys[pygame.K_DOWN]:
+        character_y += move_speed
 
-        if not character_selected:
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                if male_button.collidepoint(event.pos):
-                    is_female = False
-                    character_selected = True
-                elif female_button.collidepoint(event.pos):
-                    is_female = True
-                    character_selected = True
-        else:
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                if adopt_button.collidepoint(event.pos):
-                    dog_following = True
+    # Dog follows the character (slower speed)
+    dog_speed = 0.25  # Slower dog movement
+    if dog_x < character_x:
+        dog_x += dog_speed
+    elif dog_x > character_x:
+        dog_x -= dog_speed
+    if dog_y < character_y:
+        dog_y += dog_speed
+    elif dog_y > character_y:
+        dog_y -= dog_speed
 
-    if not character_selected:
-        draw_character_select()
-    else:
-        # Movement
-        keys = pygame.key.get_pressed()
-        if keys[pygame.K_LEFT]:
-            player_x -= player_speed
-        if keys[pygame.K_RIGHT]:
-            player_x += player_speed
-        if keys[pygame.K_UP]:
-            player_y -= player_speed
-        if keys[pygame.K_DOWN]:
-            player_y += player_speed
+    pygame.display.update()
 
-        # Dog follows player
-        if dog_following:
-            if dog_x < player_x:
-                dog_x += 2
-            elif dog_x > player_x:
-                dog_x -= 2
-            if dog_y < player_y:
-                dog_y += 2
-            elif dog_y > player_y:
-                dog_y -= 2
-
-        # Draw player
-        if is_female:
-            screen.blit(girl_img, (player_x, player_y))
-        else:
-            screen.blit(boy_img, (player_x, player_y))
-
-        # Draw dog
-        screen.blit(dog_img, (dog_x, dog_y))
-
-        # Draw adopt button
-        draw_adopt_button()
-
-    pygame.display.flip()
-    clock.tick(60)
-
+# Quit pygame
 pygame.quit()
-sys.exit()
+
+
 
 
 
