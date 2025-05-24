@@ -1,140 +1,239 @@
 import pygame
+import sys
+import math
+import time
+import random
 
-# Initialize pygame
 pygame.init()
 
-# Set up the display
-screen = pygame.display.set_mode((800, 600))
-pygame.display.set_caption("Adopt Me Game")
+# Screen size
+WIDTH, HEIGHT = 800, 600
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Pet Simulation Game")
 
 # Colors
 WHITE = (255, 255, 255)
+BROWN = (139, 69, 19)
 BLACK = (0, 0, 0)
 
-# Load images (ensure you have the correct paths for the images)
-boy_img = pygame.image.load("boy.png")
-girl_img = pygame.image.load("girl.png")
-dog_img = pygame.image.load("dog.png")
+# Load images and scale
+boy_img = pygame.transform.scale(pygame.image.load("boy.png"), (80, 120))
+girl_img = pygame.transform.scale(pygame.image.load("girl.png"), (80, 120))
+dog_img = pygame.transform.scale(pygame.image.load("dog.png"), (100, 80))
 
-# Resize images to make them smaller
-boy_img = pygame.transform.scale(boy_img, (80, 120))  # Resize to 80x120
-girl_img = pygame.transform.scale(girl_img, (80, 120))  # Resize to 80x120
-dog_img = pygame.transform.scale(dog_img, (60, 60))  # Resize to 60x60
+house_bg = pygame.transform.scale(pygame.image.load("house_background.png"), (WIDTH, HEIGHT))
+street_bg = pygame.transform.scale(pygame.image.load("street.png"), (WIDTH, HEIGHT))
+shop_bg = pygame.transform.scale(pygame.image.load("shop.png"), (WIDTH, HEIGHT))
+pet_bg = pygame.transform.scale(pygame.image.load("pet_bg.png"), (WIDTH, HEIGHT))
+hacker_bg = pygame.transform.scale(pygame.image.load("hacker_bg.png"), (WIDTH, HEIGHT))
+robber_bg = pygame.transform.scale(pygame.image.load("robber_bg.png"), (WIDTH, HEIGHT))
+spy_bg = pygame.transform.scale(pygame.image.load("spy_bg.png"), (WIDTH, HEIGHT))
 
-# Define fonts
-font = pygame.font.SysFont(None, 40)
+font = pygame.font.SysFont("Arial", 28)
 
-# Dog states
-dog_hungry = True
-dog_thirsty = True
+def draw_text(text, x, y, color=BLACK):
+    rendered = font.render(text, True, color)
+    screen.blit(rendered, (x, y))
 
-# Character position
-character_x = 100
-character_y = 150
+def select_character():
+    """Let the player choose boy or girl at start."""
+    selecting = True
+    while selecting:
+        screen.fill(WHITE)
+        draw_text("Choose your character:", 250, 150)
+        screen.blit(boy_img, (200, 250))
+        screen.blit(girl_img, (500, 250))
+        draw_text("Boy", 230, 380)
+        draw_text("Girl", 530, 380)
+        pygame.display.update()
 
-# Dog position
-dog_x = 300
-dog_y = 300
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                mx, my = pygame.mouse.get_pos()
+                boy_rect = pygame.Rect(200, 250, 80, 120)
+                girl_rect = pygame.Rect(500, 250, 80, 120)
+                if boy_rect.collidepoint(mx, my):
+                    return "boy"
+                elif girl_rect.collidepoint(mx, my):
+                    return "girl"
 
-# Function to display text
-def display_text(text, x, y, color):
-    text_surface = font.render(text, True, color)
-    screen.blit(text_surface, (x, y))
+def run_quiz():
+    """Dummy function to select job."""
+    # For demo, randomly pick job
+    return random.choice(["hacker", "robber", "spy"])
 
-# Main game loop
-running = True
-character_selected = None
-while running:
-    screen.fill(WHITE)
-    
-    # If no character selected, show options to choose
-    if character_selected is None:
-        # Draw buttons for boy and girl
-        pygame.draw.rect(screen, (0, 0, 255), (100, 500, 200, 50))  # Boy button
-        display_text("Boy", 150, 510, WHITE)
-        
-        pygame.draw.rect(screen, (255, 182, 193), (500, 500, 200, 50))  # Girl button
-        display_text("Girl", 550, 510, WHITE)
-    
-    else:
-        # Draw the selected character (boy or girl)
-        if character_selected == "boy":
-            screen.blit(boy_img, (character_x, character_y))
+def main_game():
+    job = run_quiz()
+    scene = "house"
+    char_x, char_y = 100.0, 350.0
+    dog_x, dog_y = 200.0, 400.0
+
+    # Door rectangles for scenes
+    door_house_to_street = pygame.Rect(0, 280, 80, 150)
+    door_street_to_house = pygame.Rect(300, 550, 200, 40)
+    door_street_to_shop = pygame.Rect(300, 100, 200, 40)
+    door_street_to_pet = pygame.Rect(0, 250, 80, 150)
+    door_street_to_job = pygame.Rect(700, 250, 80, 150)
+    door_shop_to_street = pygame.Rect(300, 550, 200, 40)
+
+    door_pet_to_workshop = pygame.Rect(100, 100, 100, 40)
+    door_pet_to_vets = pygame.Rect(300, 100, 100, 40)
+    door_pet_to_street = pygame.Rect(500, 100, 100, 40)
+
+    char_sel = select_character()
+
+    clock = pygame.time.Clock()
+    player_spd = 5
+    dog_spd = 3
+
+    # For feeding logic placeholders
+    dog_hungry = False
+    dog_thirsty = False
+    last_fed = time.time()
+    last_drink = time.time()
+
+    while True:
+        screen.fill(WHITE)
+        char_rect = pygame.Rect(char_x, char_y, 80, 120)
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_LEFT]:
+            char_x -= player_spd
+        if keys[pygame.K_RIGHT]:
+            char_x += player_spd
+        if keys[pygame.K_UP]:
+            char_y -= player_spd
+        if keys[pygame.K_DOWN]:
+            char_y += player_spd
+
+        # Clamp character inside screen bounds
+        char_x = max(0, min(WIDTH - 80, char_x))
+        char_y = max(0, min(HEIGHT - 120, char_y))
+
+        # Scene logic and door collision:
+        if scene == "house":
+            screen.blit(house_bg, (0, 0))
+            pygame.draw.rect(screen, BROWN, door_house_to_street)
+            draw_text("To Street", 5, door_house_to_street.y + 60, WHITE)
+
+            if char_rect.colliderect(door_house_to_street):
+                scene = "street"
+                char_x, char_y = 100, 350
+
+        elif scene == "street":
+            screen.blit(street_bg, (0, 0))
+            pygame.draw.rect(screen, BROWN, door_street_to_house)
+            draw_text("Home", door_street_to_house.x + 70, door_street_to_house.y + 5, WHITE)
+
+            pygame.draw.rect(screen, BROWN, door_street_to_shop)
+            draw_text("Shop", door_street_to_shop.x + 60, door_street_to_shop.y + 5, WHITE)
+
+            pygame.draw.rect(screen, BROWN, door_street_to_pet)
+            draw_text("Pet Area", door_street_to_pet.x + 5, door_street_to_pet.y + 60, WHITE)
+
+            pygame.draw.rect(screen, BROWN, door_street_to_job)
+            draw_text("Job", door_street_to_job.x + 10, door_street_to_job.y + 60, WHITE)
+
+            if char_rect.colliderect(door_street_to_house):
+                scene = "house"
+                char_x, char_y = 650, 350
+            elif char_rect.colliderect(door_street_to_shop):
+                scene = "shop"
+                char_x, char_y = 100, 350
+            elif char_rect.colliderect(door_street_to_pet):
+                scene = "pet"
+                char_x, char_y = 100, 350
+            elif char_rect.colliderect(door_street_to_job):
+                scene = "job"
+                char_x, char_y = 100, 350
+
+        elif scene == "shop":
+            screen.blit(shop_bg, (0, 0))
+            pygame.draw.rect(screen, BROWN, door_shop_to_street)
+            draw_text("Street", door_shop_to_street.x + 70, door_shop_to_street.y + 5, WHITE)
+
+            if char_rect.colliderect(door_shop_to_street):
+                scene = "street"
+                char_x, char_y = 400, 400
+
+        elif scene == "pet":
+            screen.blit(pet_bg, (0, 0))
+            pygame.draw.rect(screen, BROWN, door_pet_to_workshop)
+            draw_text("Workshop", door_pet_to_workshop.x + 10, door_pet_to_workshop.y + 5, WHITE)
+
+            pygame.draw.rect(screen, BROWN, door_pet_to_vets)
+            draw_text("Vets", door_pet_to_vets.x + 35, door_pet_to_vets.y + 5, WHITE)
+
+            pygame.draw.rect(screen, BROWN, door_pet_to_street)
+            draw_text("Street", door_pet_to_street.x + 35, door_pet_to_street.y + 5, WHITE)
+
+            if char_rect.colliderect(door_pet_to_workshop):
+                # Add your workshop scene or action here
+                pass
+
+            if char_rect.colliderect(door_pet_to_vets):
+                # Add your vets scene or action here
+                pass
+
+            if char_rect.colliderect(door_pet_to_street):
+                scene = "street"
+                char_x, char_y = 500, 400
+
+        elif scene == "job":
+            if job == "hacker":
+                screen.blit(hacker_bg, (0, 0))
+            elif job == "robber":
+                screen.blit(robber_bg, (0, 0))
+            elif job == "spy":
+                screen.blit(spy_bg, (0, 0))
+
+            door_job_to_street = pygame.Rect(0, 250, 80, 150)
+            pygame.draw.rect(screen, BROWN, door_job_to_street)
+            draw_text("Street", door_job_to_street.x + 10, door_job_to_street.y + 60, WHITE)
+
+            if char_rect.colliderect(door_job_to_street):
+                scene = "street"
+                char_x, char_y = 650, 350
+
+        # Draw the player character
+        if char_sel == "boy":
+            screen.blit(boy_img, (char_x, char_y))
         else:
-            screen.blit(girl_img, (character_x, character_y))
-        
-        # Draw the dog following the character
+            screen.blit(girl_img, (char_x, char_y))
+
+        # Dog follows the player smoothly
+        dx = char_x - dog_x
+        dy = char_y - dog_y
+        dist = math.hypot(dx, dy)
+        if dist > 5:
+            dog_x += dx / dist * dog_spd
+            dog_y += dy / dist * dog_spd
+
         screen.blit(dog_img, (dog_x, dog_y))
 
-        # Display dog status
+        # Placeholder feeding logic (expand as you want)
+        current_time = time.time()
+        if current_time - last_fed > 20:
+            dog_hungry = True
+        if current_time - last_drink > 20:
+            dog_thirsty = True
+
         if dog_hungry:
-            display_text("Dog is hungry!", 300, 500, BLACK)
+            draw_text("Dog is hungry! Click food bowl.", 10, 10, (255, 0, 0))
         if dog_thirsty:
-            display_text("Dog is thirsty!", 300, 550, BLACK)
-        
-        # Draw buttons for feeding and drinking
-        pygame.draw.rect(screen, (255, 0, 0), (100, 500, 200, 50))  # Feed button
-        display_text("Feed Dog", 150, 510, WHITE)
-        
-        pygame.draw.rect(screen, (0, 0, 255), (500, 500, 200, 50))  # Drink button
-        display_text("Give Drink", 550, 510, WHITE)
-    
-    # Handle events
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
-        
-        # Handle mouse clicks for choosing character
-        if event.type == pygame.MOUSEBUTTONDOWN:
-            x, y = pygame.mouse.get_pos()
-            
-            if character_selected is None:
-                # Select boy or girl
-                if 100 <= x <= 300 and 500 <= y <= 550:
-                    character_selected = "boy"
-                if 500 <= x <= 700 and 500 <= y <= 550:
-                    character_selected = "girl"
-            
-            # Feed the dog (if it's hungry)
-            if character_selected and 100 <= x <= 300 and 500 <= y <= 550 and dog_hungry:
-                dog_hungry = False
-                display_text("You fed the dog!", 300, 400, BLACK)
-            
-            # Give the dog a drink (if it's thirsty)
-            if character_selected and 500 <= x <= 700 and 500 <= y <= 550 and dog_thirsty:
-                dog_thirsty = False
-                display_text("You gave the dog a drink!", 300, 400, BLACK)
-    
-    # Move the character with arrow keys (slower movement)
-    move_speed = 0.5  # Slower movement speed (change this value for slower/faster movement)
-    
-    keys = pygame.key.get_pressed()
-    if keys[pygame.K_LEFT]:
-        character_x -= move_speed
-    if keys[pygame.K_RIGHT]:
-        character_x += move_speed
-    if keys[pygame.K_UP]:
-        character_y -= move_speed
-    if keys[pygame.K_DOWN]:
-        character_y += move_speed
+            draw_text("Dog is thirsty! Click water bowl.", 10, 40, (0, 0, 255))
 
-    # Dog follows the character (slower speed)
-    dog_speed = 0.25  # Slower dog movement
-    if dog_x < character_x:
-        dog_x += dog_speed
-    elif dog_x > character_x:
-        dog_x -= dog_speed
-    if dog_y < character_y:
-        dog_y += dog_speed
-    elif dog_y > character_y:
-        dog_y -= dog_speed
+        pygame.display.update()
+        clock.tick(60)
 
-    pygame.display.update()
-
-# Quit pygame
-pygame.quit()
-
-
-
-
+if __name__ == "__main__":
+    main_game()
 
