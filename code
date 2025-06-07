@@ -15,24 +15,67 @@ pygame.display.set_caption("Pet Simulation Game")
 WHITE = (255, 255, 255)
 BROWN = (139, 69, 19)
 BLACK = (0, 0, 0)
+RED = (255, 0, 0)
+BLUE = (0, 0, 255)
+GREEN = (0, 255, 0)
+YELLOW = (255, 255, 0)
+GRAY = (128, 128, 128)
+PURPLE = (128, 0, 128)
+ORANGE = (255, 165, 0)
 
-# Load images and scale
-boy_img = pygame.transform.scale(pygame.image.load("boy.png"), (80, 120))
-girl_img = pygame.transform.scale(pygame.image.load("girl.png"), (80, 120))
-dog_img = pygame.transform.scale(pygame.image.load("dog.png"), (100, 80))
+# Load images and scale (with fallback to colored rectangles)
+def load_image_with_fallback(filename, size, fallback_color):
+    try:
+        return pygame.transform.scale(pygame.image.load(filename), size)
+    except:
+        surf = pygame.Surface(size)
+        surf.fill(fallback_color)
+        return surf
 
-house_bg = pygame.transform.scale(pygame.image.load("house_background.png"), (WIDTH, HEIGHT))
-street_bg = pygame.transform.scale(pygame.image.load("street.png"), (WIDTH, HEIGHT))
-shop_bg = pygame.transform.scale(pygame.image.load("shop.png"), (WIDTH, HEIGHT))
-pet_bg = pygame.transform.scale(pygame.image.load("pet_bg.png"), (WIDTH, HEIGHT))
-hacker_bg = pygame.transform.scale(pygame.image.load("hacker_bg.png"), (WIDTH, HEIGHT))
-robber_bg = pygame.transform.scale(pygame.image.load("robber_bg.png"), (WIDTH, HEIGHT))
-spy_bg = pygame.transform.scale(pygame.image.load("spy_bg.png"), (WIDTH, HEIGHT))
+boy_img = load_image_with_fallback("boy.png", (80, 120), BLUE)
+girl_img = load_image_with_fallback("girl.png", (80, 120), (255, 192, 203))
+dog_img = load_image_with_fallback("dog.png", (100, 80), BROWN)
+police_img = load_image_with_fallback("police.png", (50, 50), RED)
+
+house_bg = load_image_with_fallback("house_background.png", (WIDTH, HEIGHT), (200, 255, 200))
+street_bg = load_image_with_fallback("street.png", (WIDTH, HEIGHT), (200, 200, 200))
+shop_bg = load_image_with_fallback("shop.png", (WIDTH, HEIGHT), (255, 200, 200))
+pet_bg = load_image_with_fallback("pet_bg.png", (WIDTH, HEIGHT), (200, 200, 255))
+hacker_bg = load_image_with_fallback("hacker_bg.png", (WIDTH, HEIGHT), (50, 50, 50))
+robber_bg = load_image_with_fallback("robber_bg.png", (WIDTH, HEIGHT), (100, 50, 0))
+spy_bg = load_image_with_fallback("spy_bg.png", (WIDTH, HEIGHT), (0, 100, 0))
+competition_bg = load_image_with_fallback("competition_bg.png", (WIDTH, HEIGHT), (100, 255, 100))
 
 font = pygame.font.SysFont("Arial", 28)
+small_font = pygame.font.SysFont("Arial", 20)
+tiny_font = pygame.font.SysFont("Arial", 16)
 
-def draw_text(text, x, y, color=BLACK):
-    rendered = font.render(text, True, color)
+# Game state
+money = 100  # Start with some money for shop
+pets = ["dog"]
+dog_health = 100
+dog_hunger = 50
+dog_fed_count = 0
+dog_agility = 50  # New stat
+dog_speed = 50    # New stat
+last_competition_time = time.time()
+dog_food_count = 0  # Inventory
+
+# Shop items
+shop_items = {
+    "Dog Food": {"price": 10, "description": "Feeds your dog"},
+    "Speed Training": {"price": 30, "description": "Increases dog speed by 10"},
+    "Agility Training": {"price": 30, "description": "Increases dog agility by 10"},
+    "Premium Food": {"price": 25, "description": "Restores health and boosts stats"}
+}
+
+def draw_text(text, x, y, color=BLACK, font_size="normal"):
+    if font_size == "small":
+        rendered = small_font.render(text, True, color)
+    elif font_size == "tiny":
+        rendered = tiny_font.render(text, True, color)
+    else:
+        rendered = font.render(text, True, color)
     screen.blit(rendered, (x, y))
 
 def select_character():
@@ -61,35 +104,645 @@ def select_character():
                     return "girl"
 
 def run_quiz():
-    """Dummy function to select job."""
-    # For demo, randomly pick job
-    return random.choice(["hacker", "robber", "spy"])
+    """Quiz to determine job."""
+    questions = [
+        {
+            "question": "What do you prefer to do in your free time?",
+            "answers": ["Study computers", "Follow people around", "Plan adventures"],
+            "jobs": ["hacker", "spy", "robber"]
+        },
+        {
+            "question": "What's your favorite type of movie?",
+            "answers": ["Sci-fi/Tech", "Mystery/Thriller", "Action/Adventure"],
+            "jobs": ["hacker", "spy", "robber"]
+        },
+        {
+            "question": "How do you solve problems?",
+            "answers": ["Think logically", "Observe carefully", "Take risks"],
+            "jobs": ["hacker", "spy", "robber"]
+        }
+    ]
+    
+    job_scores = {"hacker": 0, "spy": 0, "robber": 0}
+    
+    for i, q in enumerate(questions):
+        answered = False
+        while not answered:
+            screen.fill(WHITE)
+            draw_text("Job Quiz", 350, 50, BLACK)
+            draw_text(f"Question {i+1}: {q['question']}", 50, 150, BLACK, "small")
+            
+            for j, answer in enumerate(q["answers"]):
+                y_pos = 200 + j * 50
+                draw_text(f"{j+1}. {answer}", 100, y_pos, BLUE, "small")
+            
+            draw_text("Press 1, 2, or 3 to answer", 250, 400, GREEN)
+            pygame.display.update()
+            
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+                if event.type == pygame.KEYDOWN:
+                    if event.key in [pygame.K_1, pygame.K_2, pygame.K_3]:
+                        choice = event.key - pygame.K_1
+                        job_scores[q["jobs"][choice]] += 1
+                        answered = True
+    
+    return max(job_scores, key=job_scores.get)
+
+def shop_screen():
+    """Shop interface for buying items."""
+    global money, dog_health, dog_speed, dog_agility, dog_food_count
+    
+    in_shop = True
+    selected_item = 0
+    item_keys = list(shop_items.keys())
+    
+    while in_shop:
+        screen.blit(shop_bg, (0, 0))
+        draw_text("PET SHOP", 350, 50, BLACK)
+        draw_text(f"Money: £{money}", 600, 20, GREEN)
+        draw_text(f"Dog Food: {dog_food_count}", 600, 50, BROWN)
+        
+        for i, (item_name, item_data) in enumerate(shop_items.items()):
+            y_pos = 150 + i * 80
+            color = BLUE if i == selected_item else BLACK
+            draw_text(f"{i+1}. {item_name} - £{item_data['price']}", 100, y_pos, color)
+            draw_text(item_data['description'], 120, y_pos + 25, GRAY, "small")
+        
+        draw_text("Use number keys to buy items", 100, 500, GREEN)
+        draw_text("Press F to feed dog (requires food)", 100, 520, GREEN)
+        draw_text("Press ESC to leave shop", 100, 540, GREEN)
+        
+        # Show current dog stats
+        draw_text("Current Dog Stats:", 500, 150, PURPLE)
+        draw_text(f"Health: {dog_health}%", 500, 180, RED if dog_health < 50 else BLACK)
+        draw_text(f"Speed: {dog_speed}", 500, 210, BLUE)
+        draw_text(f"Agility: {dog_agility}", 500, 240, GREEN)
+        
+        pygame.display.update()
+        
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    in_shop = False
+                elif event.key == pygame.K_f and dog_food_count > 0:
+                    # Feed dog
+                    dog_food_count -= 1
+                    dog_health = min(100, dog_health + 30)
+                    screen.blit(shop_bg, (0, 0))
+                    draw_text("Dog fed! Health restored.", 300, 300, GREEN)
+                    pygame.display.update()
+                    time.sleep(1)
+                elif event.key in [pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4]:
+                    item_index = event.key - pygame.K_1
+                    if item_index < len(item_keys):
+                        item_name = item_keys[item_index]
+                        item_data = shop_items[item_name]
+                        
+                        if money >= item_data['price']:
+                            money -= item_data['price']
+                            
+                            if item_name == "Dog Food":
+                                dog_food_count += 1
+                            elif item_name == "Speed Training":
+                                dog_speed = min(100, dog_speed + 10)
+                            elif item_name == "Agility Training":
+                                dog_agility = min(100, dog_agility + 10)
+                            elif item_name == "Premium Food":
+                                dog_health = min(100, dog_health + 40)
+                                dog_speed = min(100, dog_speed + 5)
+                                dog_agility = min(100, dog_agility + 5)
+                            
+                            screen.blit(shop_bg, (0, 0))
+                            draw_text(f"Purchased {item_name}!", 300, 300, GREEN)
+                            pygame.display.update()
+                            time.sleep(1)
+                        else:
+                            screen.blit(shop_bg, (0, 0))
+                            draw_text("Not enough money!", 300, 300, RED)
+                            pygame.display.update()
+                            time.sleep(1)
+
+def pet_competition():
+    """Pet competition mini-game."""
+    global money, dog_speed, dog_agility
+    
+    # Create competitor dogs with random stats
+    competitors = [
+        {"name": "Buddy", "speed": random.randint(30, 80), "agility": random.randint(30, 80), "x": 0, "color": BROWN},
+        {"name": "Max", "speed": random.randint(30, 80), "agility": random.randint(30, 80), "x": 0, "color": ORANGE},
+        {"name": "Luna", "speed": random.randint(30, 80), "agility": random.randint(30, 80), "x": 0, "color": PURPLE},
+        {"name": "Your Dog", "speed": dog_speed, "agility": dog_agility, "x": 0, "color": GREEN}
+    ]
+    
+    # Show competition intro
+    screen.blit(competition_bg, (0, 0))
+    draw_text("PET COMPETITION STARTING!", 250, 100, RED)
+    draw_text("Navigate obstacles to win £100!", 250, 150, BLACK)
+    draw_text("Use arrow keys to control your dog", 250, 200, BLACK)
+    draw_text("Press SPACE to start!", 300, 400, GREEN)
+    
+    # Show competitors
+    for i, comp in enumerate(competitors):
+        y_pos = 250 + i * 30
+        color = comp["color"]
+        draw_text(f"{comp['name']}: Speed {comp['speed']}, Agility {comp['agility']}", 100, y_pos, color, "small")
+    
+    pygame.display.update()
+    
+    # Wait for space to start
+    waiting = True
+    while waiting:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE:
+                    waiting = False
+    
+    # Competition game
+    track_length = 700
+    obstacles = []
+    for i in range(5):
+        obstacles.append({"x": 150 + i * 120, "y": random.randint(200, 400), "passed": [False] * 4})
+    
+    player_y = 300
+    game_time = 0
+    max_time = 600  # 10 seconds at 60 FPS
+    
+    clock = pygame.time.Clock()
+    
+    while game_time < max_time:
+        screen.blit(competition_bg, (0, 0))
+        
+        # Handle player input
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_UP]:
+            player_y -= (dog_agility / 10)  # Agility affects turning speed
+        if keys[pygame.K_DOWN]:
+            player_y += (dog_agility / 10)
+        if keys[pygame.K_LEFT]:
+            competitors[3]["x"] -= (dog_speed / 15)
+        if keys[pygame.K_RIGHT]:
+            competitors[3]["x"] += (dog_speed / 15)
+        
+        player_y = max(150, min(450, player_y))
+        competitors[3]["x"] = max(0, min(track_length, competitors[3]["x"]))
+        
+        # Move AI competitors
+        for i in range(3):
+            comp = competitors[i]
+            # AI movement based on their stats
+            comp["x"] += (comp["speed"] / 20) + random.uniform(-1, 1)
+            comp["x"] = max(0, min(track_length, comp["x"]))
+        
+        # Draw track
+        pygame.draw.rect(screen, GRAY, (0, 150, WIDTH, 300))
+        pygame.draw.line(screen, WHITE, (0, 300), (WIDTH, 300), 3)
+        
+        # Draw obstacles
+        for obs in obstacles:
+            pygame.draw.rect(screen, RED, (obs["x"], obs["y"], 30, 30))
+            draw_text("X", obs["x"] + 8, obs["y"] + 5, WHITE)
+        
+        # Draw finish line
+        pygame.draw.rect(screen, YELLOW, (track_length, 150, 10, 300))
+        draw_text("FINISH", track_length - 40, 120, BLACK)
+        
+        # Draw competitors
+        for i, comp in enumerate(competitors):
+            y_pos = 180 + i * 70
+            if i == 3:  # Player dog
+                y_pos = player_y
+            pygame.draw.circle(screen, comp["color"], (int(comp["x"]) + 50, int(y_pos)), 20)
+            draw_text(comp["name"], int(comp["x"]) + 30, int(y_pos) - 40, comp["color"], "tiny")
+        
+        # Check obstacle collisions for player
+        player_rect = pygame.Rect(competitors[3]["x"] + 30, player_y - 20, 40, 40)
+        for obs in obstacles:
+            obs_rect = pygame.Rect(obs["x"], obs["y"], 30, 30)
+            if player_rect.colliderect(obs_rect) and not obs["passed"][3]:
+                # Penalty for hitting obstacle
+                competitors[3]["x"] -= 20
+                obs["passed"][3] = True
+        
+        # Draw UI
+        progress = (competitors[3]["x"] / track_length) * 100
+        draw_text(f"Progress: {progress:.1f}%", 10, 10, BLACK)
+        draw_text(f"Time: {(max_time - game_time) // 60}s", 10, 40, BLACK)
+        
+        # Check for finish
+        if competitors[3]["x"] >= track_length:
+            break
+        
+        game_time += 1
+        pygame.display.update()
+        clock.tick(60)
+        
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+    
+    # Determine winner
+    final_positions = sorted(competitors, key=lambda x: x["x"], reverse=True)
+    player_position = next(i for i, comp in enumerate(final_positions) if comp["name"] == "Your Dog")
+    
+    # Show results
+    screen.blit(competition_bg, (0, 0))
+    draw_text("COMPETITION RESULTS", 280, 100, BLACK)
+    
+    for i, comp in enumerate(final_positions):
+        y_pos = 200 + i * 40
+        color = GREEN if comp["name"] == "Your Dog" else BLACK
+        place_text = ["1st", "2nd", "3rd", "4th"][i]
+        draw_text(f"{place_text}: {comp['name']} (Distance: {comp['x']:.0f})", 200, y_pos, color)
+    
+    if player_position == 0:
+        draw_text("CONGRATULATIONS! You won £100!", 220, 400, GREEN)
+        money += 100
+    elif player_position == 1:
+        draw_text("Second place! You won £50!", 250, 400, BLUE)
+        money += 50
+    elif player_position == 2:
+        draw_text("Third place! You won £20!", 260, 400, ORANGE)
+        money += 20
+    else:
+        draw_text("Better luck next time!", 290, 400, RED)
+    
+    draw_text("Press any key to continue", 290, 450, BLACK)
+    pygame.display.update()
+    
+    # Wait for key press
+    waiting = True
+    while waiting:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.KEYDOWN:
+                waiting = False
+
+def police_interrogation():
+    """Police interrogation mini-game."""
+    questions = [
+        "Why were you acting suspiciously?",
+        "What were you doing in that area?",
+        "Can you explain your behavior?"
+    ]
+    
+    good_answers = [
+        ["I was lost", "I was looking for my dog", "I was confused"],
+        ["I was sightseeing", "I was meeting a friend", "I was exercising"],
+        ["I have anxiety", "I was distracted", "I made a mistake"]
+    ]
+    
+    screen.fill(WHITE)
+    draw_text("POLICE INTERROGATION", 250, 50, RED)
+    draw_text("Answer carefully to avoid prison!", 220, 100, BLACK)
+    
+    for i, question in enumerate(questions):
+        y_pos = 150 + i * 100
+        draw_text(f"Q{i+1}: {question}", 50, y_pos, BLACK, "small")
+        
+        for j, answer in enumerate(good_answers[i]):
+            answer_y = y_pos + 25 + j * 20
+            draw_text(f"{j+1}. {answer}", 70, answer_y, BLUE, "small")
+    
+    draw_text("Press 1-3 to answer each question", 250, 500, GREEN)
+    draw_text("Get 2/3 correct to go free!", 270, 530, GREEN)
+    
+    pygame.display.update()
+    
+    correct_answers = 0
+    questions_answered = 0
+    
+    while questions_answered < 3:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.KEYDOWN:
+                if event.key in [pygame.K_1, pygame.K_2, pygame.K_3]:
+                    if random.random() > 0.3:
+                        correct_answers += 1
+                    questions_answered += 1
+                    
+                    screen.fill(WHITE)
+                    draw_text("POLICE INTERROGATION", 250, 50, RED)
+                    draw_text(f"Questions answered: {questions_answered}/3", 250, 100)
+                    draw_text(f"Good answers: {correct_answers}", 280, 130)
+                    pygame.display.update()
+                    time.sleep(1)
+    
+    return correct_answers >= 2
+
+def game_over_screen(reason):
+    """Show game over screen."""
+    screen.fill(BLACK)
+    draw_text("GAME OVER", 320, 200, RED)
+    draw_text(reason, 200, 250, WHITE)
+    if "dog" in reason.lower():
+        draw_text("Your dog is gone...", 280, 300, WHITE)
+    draw_text("Press ESC to quit", 300, 400, WHITE)
+    pygame.display.update()
+    
+    waiting = True
+    while waiting:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
+                pygame.quit()
+                sys.exit()
+
+def hacker_job():
+    """Hacker job mini-game with password guessing."""
+    clues = [
+        "It's a 4-digit number",
+        "The sum of digits is 10", 
+        "First digit is larger than last digit"
+    ]
+    
+    passwords = ["7210", "6310", "5320", "8200", "9100"]
+    correct_password = random.choice(passwords)
+    
+    attempts = 3
+    
+    while attempts > 0:
+        screen.blit(hacker_bg, (0, 0))
+        draw_text("HACKER JOB - CRACK THE PASSWORD", 180, 50, GREEN)
+        
+        for i, clue in enumerate(clues):
+            draw_text(f"Clue {i+1}: {clue}", 100, 120 + i * 40, WHITE)
+        
+        draw_text(f"Attempts left: {attempts}", 100, 250, YELLOW)
+        draw_text("Enter 4-digit password:", 100, 300, WHITE)
+        draw_text("Press ENTER to submit", 100, 350, WHITE)
+        draw_text("Press ESC to leave job", 100, 400, WHITE)
+        
+        pygame.display.update()
+        
+        user_input = ""
+        inputting = True
+        
+        while inputting and len(user_input) < 4:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_ESCAPE:
+                        return False
+                    elif event.key >= pygame.K_0 and event.key <= pygame.K_9:
+                        user_input += str(event.key - pygame.K_0)
+                        screen.blit(hacker_bg, (0, 0))
+                        draw_text("HACKER JOB - CRACK THE PASSWORD", 180, 50, GREEN)
+                        for i, clue in enumerate(clues):
+                            draw_text(f"Clue {i+1}: {clue}", 100, 120 + i * 40, WHITE)
+                        draw_text(f"Attempts left: {attempts}", 100, 250, YELLOW)
+                        draw_text("Enter 4-digit password:", 100, 300, WHITE)
+                        draw_text(f"Input: {user_input}", 100, 330, YELLOW)
+                        pygame.display.update()
+                    elif event.key == pygame.K_BACKSPACE and user_input:
+                        user_input = user_input[:-1]
+        
+        if len(user_input) == 4:
+            if user_input == correct_password:
+                screen.blit(hacker_bg, (0, 0))
+                draw_text("SUCCESS! Password cracked!", 250, 300, GREEN)
+                draw_text("You earned £20!", 300, 330, YELLOW)
+                pygame.display.update()
+                time.sleep(2)
+                return True
+            else:
+                attempts -= 1
+                if attempts > 0:
+                    screen.blit(hacker_bg, (0, 0))
+                    draw_text("Wrong password! Try again.", 250, 300, RED)
+                    pygame.display.update()
+                    time.sleep(2)
+    
+    return False
+
+def spy_job():
+    """Spy job - follow target without being caught."""
+    target_x, target_y = 400, 300
+    player_x, player_y = 100, 300
+    target_direction = 1
+    target_looking = False
+    look_timer = 0
+    caught = False
+    hiding = False
+    pretending = False
+    success_timer = 0
+    
+    while success_timer < 300:
+        screen.blit(spy_bg, (0, 0))
+        
+        target_x += target_direction * 2
+        if target_x > WIDTH - 100 or target_x < 100:
+            target_direction *= -1
+        
+        if random.random() < 0.01:
+            target_looking = True
+            look_timer = 60
+        
+        if look_timer > 0:
+            look_timer -= 1
+            if look_timer == 0:
+                target_looking = False
+        
+        keys = pygame.key.get_pressed()
+        hiding = keys[pygame.K_h]
+        pretending = keys[pygame.K_p]
+        
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    return False
+        
+        if keys[pygame.K_LEFT]:
+            player_x -= 3
+        if keys[pygame.K_RIGHT]:
+            player_x += 3
+        if keys[pygame.K_UP]:
+            player_y -= 3
+        if keys[pygame.K_DOWN]:
+            player_y += 3
+        
+        distance = math.hypot(target_x - player_x, target_y - player_y)
+        if target_looking and distance < 150 and not hiding and not pretending:
+            caught = True
+            break
+        
+        if 50 < distance < 200:
+            success_timer += 1
+        else:
+            success_timer = max(0, success_timer - 2)
+        
+        color = RED if target_looking else BLUE
+        pygame.draw.circle(screen, color, (int(target_x), int(target_y)), 25)
+        
+        player_color = GRAY if hiding else YELLOW if pretending else GREEN
+        pygame.draw.circle(screen, player_color, (int(player_x), int(player_y)), 20)
+        
+        draw_text("SPY JOB - Follow the target!", 50, 50, WHITE)
+        draw_text(f"Progress: {success_timer}/300", 50, 80, WHITE)
+        draw_text("H to hide, P to pretend", 50, 110, WHITE)
+        draw_text("ESC to leave", 50, 140, WHITE)
+        
+        if target_looking:
+            draw_text("TARGET IS LOOKING!", 300, 50, RED)
+        
+        pygame.display.update()
+        pygame.time.Clock().tick(60)
+    
+    if not caught:
+        screen.blit(spy_bg, (0, 0))
+        draw_text("Mission Successful!", 300, 300, GREEN)
+        draw_text("You earned £20!", 320, 330, YELLOW)
+        pygame.display.update()
+        time.sleep(2)
+    
+    return not caught
+
+def robber_job():
+    """Robber job - collect diamonds while avoiding police in a maze."""
+    maze = [
+        [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+        [1,0,0,0,1,0,0,0,0,0,0,0,1,2,0,1],
+        [1,0,1,0,1,0,1,1,1,1,1,0,1,0,0,1],
+        [1,0,1,0,0,0,0,0,0,0,1,0,0,0,1,1],
+        [1,0,1,1,1,1,1,0,1,0,1,1,1,0,0,1],
+        [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1],
+        [1,1,1,0,1,1,1,1,1,0,1,1,1,1,0,1],
+        [1,2,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,1,1,1,0,1,1,1,1,1,0,1,1,1,1],
+        [1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,1],
+        [1,1,1,1,1,1,1,0,1,0,1,0,1,1,0,1],
+        [1,2,0,0,0,0,0,0,1,0,0,0,0,0,0,1],
+        [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+    ]
+    
+    cell_size = 50
+    player_x, player_y = 1, 1
+    diamonds_collected = 0
+    police_positions = [(6, 9), (9, 13), (11, 14)]
+    police_move_timer = 0
+    
+    clock = pygame.time.Clock()
+    
+    while diamonds_collected < 3:
+        screen.blit(robber_bg, (0, 0))
+        
+        # Draw maze
+        for y in range(len(maze)):
+            for x in range(len(maze[y])):
+                rect = pygame.Rect(x * cell_size, y * cell_size, cell_size, cell_size)
+                if maze[y][x] == 1:
+                    pygame.draw.rect(screen, GRAY, rect)
+                elif maze[y][x] == 2:
+                    pygame.draw.rect(screen, YELLOW, rect)
+        
+        # Draw police using images
+        for px, py in police_positions:
+            screen.blit(police_img, (px * cell_size, py * cell_size))
+        
+        # Draw player
+        player_rect = pygame.Rect(player_x * cell_size, player_y * cell_size, cell_size, cell_size)
+        pygame.draw.rect(screen, GREEN, player_rect)
+        
+        draw_text(f"Diamonds: {diamonds_collected}/3", 10, 10, WHITE)
+        draw_text("Avoid the police!", 10, 40, WHITE)
+        
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.KEYDOWN:
+                new_x, new_y = player_x, player_y
+                if event.key == pygame.K_LEFT:
+                    new_x -= 1
+                elif event.key == pygame.K_RIGHT:
+                    new_x += 1
+                elif event.key == pygame.K_UP:
+                    new_y -= 1
+                elif event.key == pygame.K_DOWN:
+                    new_y += 1
+                elif event.key == pygame.K_ESCAPE:
+                    return False
+                
+                if (0 <= new_x < len(maze[0]) and 0 <= new_y < len(maze) and 
+                    maze[new_y][new_x] != 1):
+                    
+                    if maze[new_y][new_x] == 2:
+                        diamonds_collected += 1
+                        maze[new_y][new_x] = 0
+                    
+                    if (new_x, new_y) in police_positions:
+                        return False
+                    
+                    player_x, player_y = new_x, new_y
+        
+        # Move police (slower than player)
+        police_move_timer += 1
+        if police_move_timer >= 3:
+            police_move_timer = 0
+            for i, (px, py) in enumerate(police_positions):
+                moves = [(0, 1), (0, -1), (1, 0), (-1, 0)]
+                random.shuffle(moves)
+                for dx, dy in moves:
+                    new_px, new_py = px + dx, py + dy
+                    if (0 <= new_px < len(maze[0]) and 0 <= new_py < len(maze) and 
+                        maze[new_py][new_px] != 1 and (new_px, new_py) not in police_positions):
+                        police_positions[i] = (new_px, new_py)
+                        break
+        
+        if (player_x, player_y) in police_positions:
+            return False
+        
+        pygame.display.update()
+        clock.tick(15)
+    
+    screen.blit(robber_bg, (0, 0))
+    draw_text("Heist Successful!", 300, 300, GREEN)
+    draw_text("You earned £20!", 320, 330, YELLOW)
+    pygame.display.update()
+    time.sleep(2)
+    return True
+
+def driving_to_police():
+    """Show driving to police station animation."""
+    for i in range(60):
+        screen.fill(GRAY)
+        draw_text("Driving to Police Station...", 250, 280, BLACK)
+        car_x = (i * 10) % (WIDTH + 100) - 50
+        pygame.draw.rect(screen, RED, (car_x, 350, 80, 40))
+        pygame.display.update()
+        pygame.time.Clock().tick(10)
 
 def main_game():
+    global money, dog_health, dog_fed_count, last_competition_time, dog_speed, dog_agility
+    
+    char_sel = select_character()
     job = run_quiz()
+    
     scene = "house"
     char_x, char_y = 100.0, 350.0
     dog_x, dog_y = 200.0, 400.0
-
-    # Door rectangles for scenes
-    door_house_to_street = pygame.Rect(0, 280, 80, 150)
-    door_street_to_house = pygame.Rect(300, 550, 200, 40)
-    door_street_to_shop = pygame.Rect(300, 100, 200, 40)
-    door_street_to_pet = pygame.Rect(0, 250, 80, 150)
-    door_street_to_job = pygame.Rect(700, 250, 80, 150)
-    door_shop_to_street = pygame.Rect(300, 550, 200, 40)
-
-    door_pet_to_workshop = pygame.Rect(100, 100, 100, 40)
-    door_pet_to_vets = pygame.Rect(300, 100, 100, 40)
-    door_pet_to_street = pygame.Rect(500, 100, 100, 40)
-
-    char_sel = select_character()
 
     clock = pygame.time.Clock()
     player_spd = 5
     dog_spd = 3
 
-    # For feeding logic placeholders
     dog_hungry = False
     dog_thirsty = False
     last_fed = time.time()
@@ -98,6 +751,30 @@ def main_game():
     while True:
         screen.fill(WHITE)
         char_rect = pygame.Rect(char_x, char_y, 80, 120)
+
+        # Check for pet competition every 2 minutes (120 seconds)
+        current_time = time.time()
+        if current_time - last_competition_time >= 120:
+            # Show competition notification
+            screen.fill(WHITE)
+            draw_text("PET COMPETITION STARTING!", 250, 250, RED)
+            draw_text("Press ENTER to participate or ESC to skip", 200, 300, BLACK)
+            pygame.display.update()
+            
+            waiting_for_choice = True
+            while waiting_for_choice:
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        pygame.quit()
+                        sys.exit()
+                    if event.type == pygame.KEYDOWN:
+                        if event.key == pygame.K_RETURN:
+                            pet_competition()
+                            waiting_for_choice = False
+                        elif event.key == pygame.K_ESCAPE:
+                            waiting_for_choice = False
+            
+            last_competition_time = current_time
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -114,15 +791,31 @@ def main_game():
         if keys[pygame.K_DOWN]:
             char_y += player_spd
 
-        # Clamp character inside screen bounds
         char_x = max(0, min(WIDTH - 80, char_x))
         char_y = max(0, min(HEIGHT - 120, char_y))
 
-        # Scene logic and door collision:
+        # Dog health decreases over time
+        if time.time() - last_fed > 30:
+            dog_health -= 1
+            dog_hungry = True
+            last_fed = time.time()
+        
+        if dog_health <= 0:
+            game_over_screen("Your dog died from neglect!")
+
         if scene == "house":
             screen.blit(house_bg, (0, 0))
+            door_house_to_street = pygame.Rect(0, 280, 80, 150)
             pygame.draw.rect(screen, BROWN, door_house_to_street)
             draw_text("To Street", 5, door_house_to_street.y + 60, WHITE)
+            
+            # Draw dog following player
+            if abs(dog_x - char_x) > 5:
+                dog_x += dog_spd if char_x > dog_x else -dog_spd
+            if abs(dog_y - char_y) > 5:
+                dog_y += dog_spd if char_y > dog_y else -dog_spd
+            
+            screen.blit(dog_img, (dog_x, dog_y))
 
             if char_rect.colliderect(door_house_to_street):
                 scene = "street"
@@ -130,110 +823,102 @@ def main_game():
 
         elif scene == "street":
             screen.blit(street_bg, (0, 0))
+            
+            door_street_to_house = pygame.Rect(300, 550, 200, 40)
             pygame.draw.rect(screen, BROWN, door_street_to_house)
             draw_text("Home", door_street_to_house.x + 70, door_street_to_house.y + 5, WHITE)
 
-            pygame.draw.rect(screen, BROWN, door_street_to_shop)
-            draw_text("Shop", door_street_to_shop.x + 60, door_street_to_shop.y + 5, WHITE)
-
+            door_street_to_pet = pygame.Rect(0, 250, 80, 150)
             pygame.draw.rect(screen, BROWN, door_street_to_pet)
             draw_text("Pet Area", door_street_to_pet.x + 5, door_street_to_pet.y + 60, WHITE)
 
+            door_street_to_job = pygame.Rect(700, 250, 80, 150)
             pygame.draw.rect(screen, BROWN, door_street_to_job)
             draw_text("Job", door_street_to_job.x + 10, door_street_to_job.y + 60, WHITE)
+
+            door_street_to_shop = pygame.Rect(350, 0, 100, 80)
+            pygame.draw.rect(screen, PURPLE, door_street_to_shop)
+            draw_text("SHOP", door_street_to_shop.x + 25, door_street_to_shop.y + 25, WHITE)
+
+            # Draw dog following player
+            if abs(dog_x - char_x) > 5:
+                dog_x += dog_spd if char_x > dog_x else -dog_spd
+            if abs(dog_y - char_y) > 5:
+                dog_y += dog_spd if char_y > dog_y else -dog_spd
+            
+            screen.blit(dog_img, (dog_x, dog_y))
 
             if char_rect.colliderect(door_street_to_house):
                 scene = "house"
                 char_x, char_y = 650, 350
-            elif char_rect.colliderect(door_street_to_shop):
-                scene = "shop"
-                char_x, char_y = 100, 350
             elif char_rect.colliderect(door_street_to_pet):
                 scene = "pet"
                 char_x, char_y = 100, 350
+            elif char_rect.colliderect(door_street_to_shop):
+                shop_screen()
             elif char_rect.colliderect(door_street_to_job):
-                scene = "job"
-                char_x, char_y = 100, 350
-
-        elif scene == "shop":
-            screen.blit(shop_bg, (0, 0))
-            pygame.draw.rect(screen, BROWN, door_shop_to_street)
-            draw_text("Street", door_shop_to_street.x + 70, door_shop_to_street.y + 5, WHITE)
-
-            if char_rect.colliderect(door_shop_to_street):
-                scene = "street"
-                char_x, char_y = 400, 400
+                # Do job based on quiz result
+                success = False
+                if job == "hacker":
+                    success = hacker_job()
+                elif job == "spy":
+                    success = spy_job()
+                elif job == "robber":
+                    success = robber_job()
+                
+                if success:
+                    money += 20
+                else:
+                    # Chance of police encounter if job failed
+                    if random.random() < 0.5:
+                        driving_to_police()
+                        if not police_interrogation():
+                            game_over_screen("You were sent to prison!")
 
         elif scene == "pet":
             screen.blit(pet_bg, (0, 0))
-            pygame.draw.rect(screen, BROWN, door_pet_to_workshop)
-            draw_text("Workshop", door_pet_to_workshop.x + 10, door_pet_to_workshop.y + 5, WHITE)
-
-            pygame.draw.rect(screen, BROWN, door_pet_to_vets)
-            draw_text("Vets", door_pet_to_vets.x + 35, door_pet_to_vets.y + 5, WHITE)
-
+            door_pet_to_street = pygame.Rect(700, 280, 80, 150)
             pygame.draw.rect(screen, BROWN, door_pet_to_street)
-            draw_text("Street", door_pet_to_street.x + 35, door_pet_to_street.y + 5, WHITE)
-
-            if char_rect.colliderect(door_pet_to_workshop):
-                # Add your workshop scene or action here
-                pass
-
-            if char_rect.colliderect(door_pet_to_vets):
-                # Add your vets scene or action here
-                pass
+            draw_text("To Street", door_pet_to_street.x + 5, door_pet_to_street.y + 60, WHITE)
+            
+            # Draw dog following player
+            if abs(dog_x - char_x) > 5:
+                dog_x += dog_spd if char_x > dog_x else -dog_spd
+            if abs(dog_y - char_y) > 5:
+                dog_y += dog_spd if char_y > char_y else -dog_spd
+            
+            screen.blit(dog_img, (dog_x, dog_y))
 
             if char_rect.colliderect(door_pet_to_street):
                 scene = "street"
-                char_x, char_y = 500, 400
-
-        elif scene == "job":
-            if job == "hacker":
-                screen.blit(hacker_bg, (0, 0))
-            elif job == "robber":
-                screen.blit(robber_bg, (0, 0))
-            elif job == "spy":
-                screen.blit(spy_bg, (0, 0))
-
-            door_job_to_street = pygame.Rect(0, 250, 80, 150)
-            pygame.draw.rect(screen, BROWN, door_job_to_street)
-            draw_text("Street", door_job_to_street.x + 10, door_job_to_street.y + 60, WHITE)
-
-            if char_rect.colliderect(door_job_to_street):
-                scene = "street"
                 char_x, char_y = 650, 350
 
-        # Draw the player character
+        # Draw character
         if char_sel == "boy":
             screen.blit(boy_img, (char_x, char_y))
         else:
             screen.blit(girl_img, (char_x, char_y))
-
-        # Dog follows the player smoothly
-        dx = char_x - dog_x
-        dy = char_y - dog_y
-        dist = math.hypot(dx, dy)
-        if dist > 5:
-            dog_x += dx / dist * dog_spd
-            dog_y += dy / dist * dog_spd
-
-        screen.blit(dog_img, (dog_x, dog_y))
-
-        # Placeholder feeding logic (expand as you want)
-        current_time = time.time()
-        if current_time - last_fed > 20:
-            dog_hungry = True
-        if current_time - last_drink > 20:
-            dog_thirsty = True
-
+        
+        # Draw UI
+        draw_text(f"Money: £{money}", 10, 10, GREEN)
+        draw_text(f"Dog Health: {dog_health}%", 10, 40, RED if dog_health < 50 else BLACK)
+        draw_text(f"Dog Speed: {dog_speed}", 10, 70, BLUE)
+        draw_text(f"Dog Agility: {dog_agility}", 10, 100, GREEN)
+        draw_text(f"Job: {job.title()}", 10, 130, BLUE)
+        draw_text(f"Food: {dog_food_count}", 10, 160, BROWN)
+        
+        # Competition timer
+        time_to_competition = 120 - (current_time - last_competition_time)
+        if time_to_competition > 0:
+            draw_text(f"Next Competition: {int(time_to_competition)}s", 500, 10, PURPLE)
+        else:
+            draw_text("Competition Ready!", 500, 10, RED)
+        
         if dog_hungry:
-            draw_text("Dog is hungry! Click food bowl.", 10, 10, (255, 0, 0))
-        if dog_thirsty:
-            draw_text("Dog is thirsty! Click water bowl.", 10, 40, (0, 0, 255))
-
+            draw_text("Dog is hungry!", 10, 190, RED)
+        
         pygame.display.update()
         clock.tick(60)
 
 if __name__ == "__main__":
     main_game()
-
